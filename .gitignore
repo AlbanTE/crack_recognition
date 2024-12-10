@@ -1,0 +1,8 @@
+*
+
+!*.c
+!*.h
+!Makefile
+!Projet.pdf
+!.gitignore
+!.git/
