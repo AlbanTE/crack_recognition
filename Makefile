@@ -2,7 +2,7 @@
 
 # General settings
 CFLAGS = -g -std=c99 -Wall -Wextra -pedantic -O0 # Do not touch these flags! 
-LDFLAGS = -lm -lGL -lglut # Mathematical library support + GLUT
+LDFLAGS = -lm # Mathematical library support
 OUTPUT = project
 SRC = $(wildcard *.c)
 
@@ -12,7 +12,7 @@ PRED_DIR=output
 TEST_DIR=test
 
 # Examples of parameters to give to your program
-PARAM1  = --input_filename $(IMG_DIR)/11215-8-grey.jpg --output_filename $(PRED_DIR)/11215-8-grey.png --x_0 50 --y_0 75
+PARAM1  = --input_filename $(IMG_DIR)/11215-8.pgm --output_filename $(PRED_DIR)/11215-8.pgm --x_0 50 --y_0 75
 PARAM3  = $(PARAM1) --reject_criterion 0.5
 PARAM4  = $(PARAM3)
 PARAM5  = $(PARAM4) --min_size 3

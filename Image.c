@@ -116,7 +116,7 @@ Image* I_read(char *imagefilename)
 				for(y=0;y<img->_height;y++)
 					for(x=0;x<img->_width;x++)
 					{
-						int indice = (img->_height-1-y)*img->_width + x; // Erreur dans le code fourni
+						int indice = y*img->_width + x; // Erreur dans le code fourni
 						Color c = C_new((1.0*donnees[3*indice  ])/valmax,
 										(1.0*donnees[3*indice+1])/valmax,
 										(1.0*donnees[3*indice+2])/valmax);
@@ -225,12 +225,12 @@ void I_plotColor(Image *img, int x, int y, Color c)
 //------------------------------------------------------------------------
 // Changement de repère
 
-static void _windowToImage(Image *img, int xwin, int ywin, int *ximg, int *yimg)
-{
+// static void _windowToImage(Image *img, int xwin, int ywin, int *ximg, int *yimg)
+// {
 
-	*ximg = img->_xoffset + img->_xzoom + (xwin-img->_xzoom) / img->_zoom;
-	*yimg = img->_yoffset + img->_yzoom + (ywin-img->_yzoom) / img->_zoom;
-}
+// 	*ximg = img->_xoffset + img->_xzoom + (xwin-img->_xzoom) / img->_zoom;
+// 	*yimg = img->_yoffset + img->_yzoom + (ywin-img->_yzoom) / img->_zoom;
+// }
 
 //-----
 // Changement de repère inverse
@@ -280,26 +280,26 @@ void I_move(Image *img, int x, int y)
 
 //------------------------------------------------------------------------
 
-void I_draw(Image *img)
-{
-	glBegin(GL_POINTS);
-	int xwin, ywin, ximg, yimg;
-	for(xwin=0;xwin<img->_width;xwin++)
-		for(ywin=0;ywin<img->_height;ywin++)
-		{
-			_windowToImage(img, xwin, ywin, &ximg, &yimg);
-			Color c;
-			if((ximg>=0)&&(ximg<img->_width)&&
-			   (yimg>=0)&&(yimg<img->_height))
-				c = img->_buffer[ximg][yimg];
-			else
-				c = C_new(0,0,0);
+// void I_draw(Image *img)
+// {
+// 	glBegin(GL_POINTS);
+// 	int xwin, ywin, ximg, yimg;
+// 	for(xwin=0;xwin<img->_width;xwin++)
+// 		for(ywin=0;ywin<img->_height;ywin++)
+// 		{
+// 			_windowToImage(img, xwin, ywin, &ximg, &yimg);
+// 			Color c;
+// 			if((ximg>=0)&&(ximg<img->_width)&&
+// 			   (yimg>=0)&&(yimg<img->_height))
+// 				c = img->_buffer[ximg][yimg];
+// 			else
+// 				c = C_new(0,0,0);
 
-			glColor3f(c._red,c._green,c._blue);
-			glVertex2i(xwin,ywin);
-		}
-	glEnd();
-}
+// 			glColor3f(c._red,c._green,c._blue);
+// 			glVertex2i(xwin,ywin);
+// 		}
+// 	glEnd();
+// }
 
 //------------------------------------------------------------------------
 

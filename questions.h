@@ -32,3 +32,7 @@ void writeImage(char *outname, Image *out);
 void question_1(char *filename, char *outname, int x0, int y0);
 
 void question_2(int x, int y);
+
+void question_3(char *infile, char *outfile, int x, int y, float reject_criterion);
+
+void question_4(char *infile, char *outfile, int x, int y, float reject_criterion);

@@ -28,6 +28,12 @@ int main(int argc, char* argv[])
 			case 2:
 				question_2(args->x_0, args->y_0);
 				break;
+			case 3:
+				question_3(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion);
+				break;
+			case 4:
+				question_4(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion);
+				break;
 			/* [...] */
 			default:
 				fprintf(stderr, "Question %d: no answer.\n", args->question);

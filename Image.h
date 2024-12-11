@@ -50,7 +50,7 @@ void I_zoomInit   (Image *img);
 void I_zoom       (Image *img, double zoom_coef);
 void I_move       (Image *img, int x, int y);
 
-void I_draw       (Image *img);
+// void I_draw       (Image *img);
 
 #endif
 
