@@ -149,7 +149,6 @@ pile I_remplissage8(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Co
 		if ((*cmp_color)(img_in->_buffer[x1][y4], germe_color)) if (!visites[x1][y4]) { p = empiler(x1, y4, p); visites[x1][y4] = 1; }
 		if ((*cmp_color)(img_in->_buffer[x2][y3], germe_color)) if (!visites[x2][y3]) { p = empiler(x2, y3, p); visites[x2][y3] = 1; }
 		if ((*cmp_color)(img_in->_buffer[x2][y4], germe_color)) if (!visites[x2][y4]) { p = empiler(x2, y4, p); visites[x2][y4] = 1; }
-
 	}
 
 	pile_free(p);
@@ -222,13 +221,13 @@ float circularite(Image *cc)
 	for(int x=0;x<cc->_width;x++)
 		distances[x] = (int*)calloc(cc->_height,sizeof(int));
 
+	int dmax = 1 + MIN(cc->_width, cc->_height);
+
 	for (int x=0; x < cc->_width; x++)
 		for (int y=0; y < cc->_height; y++)
-			distances[x][y] = (cc->_buffer[x][y]._red == 0 ? 0 : (int) INFINITY);
+			distances[x][y] = (cc->_buffer[x][y]._red == 0 ? 0 : dmax);
 
 	// --------------------------------------------------------
-	pile tous  = pile_nouv();
-
 	int dcentres = 0;
 
 	for (int x=0; x < cc->_width; x++)
@@ -236,61 +235,42 @@ float circularite(Image *cc)
 		for (int y=0; y < cc->_height; y++)
 		{
 			if (cc->_buffer[x][y]._red == 1)
-			{
-				tous = empiler(x, y, tous);
-				
-				int dmin = (int) INFINITY;
+			{				
+				int dmin = dmax;
 				for (int x1=MAX(x-1, 0); x1 <= MIN(x+1, cc->_width-1); x1++) 
 					for (int y1=MAX(y-1, 0); y1 <= MIN(y+1, cc->_height-1); y1++)
 						if (distances[x1][y1] < dmin) dmin = distances[x1][y1];
 				
-				distances[x][y] = (dmin == (int) INFINITY ? 1 : dmin + 1);
+				distances[x][y] = (dmin == dmax ? 1 : dmin + 1);
 				if (distances[x][y] > dcentres) dcentres = distances[x][y];
 			}
 		}
 	}
 
-	// printf("Distances centres : %d\n", dcentres);
-
 	int rayon = dcentres;
-
 	// printf("Rayon : %d\n", rayon);
 
 
 	// Calcul du diamètre -------------------------------------
-	pile bords   = pile_nouv();
+	int xmin = (cc->_width), ymin = (cc->_height), xmax = 0, ymax = 0;
+
 	for (int x=0; x < cc->_width; x++) 
 		for (int y=0; y < cc->_height; y++) 
-			if (distances[x][y] == 1) bords = empiler(x, y, bords);
+			if (distances[x][y] == 1) 
+			{
+				// bords = empiler(x, y, bords);
+				if (x < xmin) xmin = x;
+				if (x > xmax) xmax = x;
+				if (y < ymin) ymin = y;
+				if (y > ymax) ymax = y;
+			}
+	
+	// printf("xmin : %d\nxmax : %d\nymin : %d\nymax : %d\n", xmin, xmax, ymin, ymax);
 
-
-	// printf("Nombre de pixels pour le diamètre : %d\n", pile_length(bords));
-	pile tmp_bords = bords, tmp_bords2 = bords;
-
-	int diametre = 0;
-	while (tmp_bords != NULL)
-	{
-		int x1 = tmp_bords->tx, y1 = tmp_bords->ty;
-
-		while (tmp_bords2 != NULL)
-		{
-			int x2 = tmp_bords2->tx, y2 = tmp_bords2->ty;
-			diametre = MAX(diametre, dinf(x1, y1, x2, y2));
-
-			tmp_bords2 = tmp_bords2->r;
-		}
-
-		tmp_bords = tmp_bords->r;
-		tmp_bords2 = tmp_bords;
-		
-		// printf("Pixels restants : %d\n", pile_length(tmp_bords));
-	}
-
+	int diametre = MAX(xmax-xmin, ymax-ymin);
 	// printf("Diamètre : %d\n", diametre);
 
-	// printf("Circularité : %f\n", (2.f*rayon)/diametre);
 
-	pile_free(tous);
 	for(int x=0;x<cc->_width;x++)
 		free(distances[x]);
 	free(distances);
@@ -410,8 +390,8 @@ void question_4(char *infile, char *outfile, int x, int y, float reject_criterio
 
 	float circu = circularite(out);
 	int reject;
-	if (circu > reject_criterion) reject = 0;
-	else reject = 1;
+	if (circu > reject_criterion) reject = 1;
+	else reject = 0;
 
 	printf("Circularité : %f\n", circu);
 	printf("Forme germée %s.\n", (reject ? "rejetée" : "acceptée"));
