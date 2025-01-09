@@ -5,7 +5,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 typedef struct spile{
-	int tx, ty;
+	int tx, ty, size;
 	struct spile *r;
 } *pile;
 
@@ -19,13 +19,9 @@ void pile_free(pile p);
 
 int isInPile(int x, int y, pile p);
 
-Color getColor(Image *img, int x, int y);
+pile I_remplissage4(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int));
 
-int color_equals(Color c1, Color c2);
-
-pile I_remplissage4(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, Color));
-
-pile I_remplissage8(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, Color));
+pile I_remplissage8(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int));
 
 void writeImage(char *outname, Image *out);
 
@@ -36,3 +32,9 @@ void question_2(int x, int y);
 void question_3(char *infile, char *outfile, int x, int y, float reject_criterion);
 
 void question_4(char *infile, char *outfile, int x, int y, float reject_criterion);
+
+void question_5(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size);
+
+void question_6(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size);
+
+void question_7(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size);
