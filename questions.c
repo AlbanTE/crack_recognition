@@ -329,7 +329,7 @@ pile AjouterPixelBresenham(pile p, int xA, int yA, int dx, int dy, int x, int y)
 }
 
 //	Cette fonction renvoie une pile contenant toutes les coordonnées des pixels appartenant à la droite AB
-pile bresenham(int xA, int yA, int xB, int yB, int xmin, int xmax)
+pile bresenham(int xA, int yA, int xB, int yB)
 {
 	pile p = pile_nouv();
 
@@ -338,27 +338,20 @@ pile bresenham(int xA, int yA, int xB, int yB, int xmin, int xmax)
 	dx=xB-xA; dy=yB-yA;
 	if (dx < 0) dx = -dx;
 	if (dy < 0) dy = -dy;
-	if (dy > dx) { int tmp = dy; dy = dx, dx = tmp; }
+	if (abs(dy) > abs(dx)) { int tmp = dy; dy = dx, dx = tmp; }
 
 	incrd1=2*dy; incrd2=2*(dy-dx);
 	x_curr = xA; y_curr = yA; d=2*dy-dx;
-	while (x_curr<=xmax)
+	while (x_curr<=xB)
 	{
 		p = AjouterPixelBresenham(p, xA, yA, xB-xA, yB-yA, x_curr, y_curr);
 		x_curr+=1;
 		if(d<0) {d=d+incrd1;} else {y_curr++; d=d+incrd2;}
 	}
 
-	x_curr = xA; y_curr = yA; d=2*dy-dx;
-	while (x_curr>xmin)
-	{
-		x_curr-=1;
-		if(d>0) {d=d-incrd1;} else {y_curr--; d=d-incrd2;}
-		p = AjouterPixelBresenham(p, xA, yA, xB-xA, yB-yA, x_curr, y_curr);
-	}
 
 	printf("A : (%d, %d) | B : (%d, %d)\n", xA, yA, xB, yB);
-	pile tmp = p;
+	// pile tmp = p;
 	// while (tmp != NULL) { printf("(%d, %d)\n", tmp->tx, tmp->ty); tmp = tmp->r; }
 
 	return p;
@@ -425,27 +418,41 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 		
 		// Après 2 itérations
 		pile tmp_cc = cc;
-		int xmax = cc->tx, ymax = cc->tx;
+		int xmax = cc->tx, ymax = cc->ty;
+		printf("Init max : (%d, %d)\n", xmax, ymax);
 
 		while (tmp_cc != NULL)
 		{
 			int x = tmp_cc->tx, y = tmp_cc->ty;
-			if (!(x = x_germe && y == y_germe) && (intensite(img_in->_buffer[x][y]) < intensite(img_in->_buffer[xmax][ymax])))
-				{ xmax = tmp_cc->tx; ymax = tmp_cc->ty; }
+			if (!(x == x_germe && y == y_germe) && (intensite(img_in->_buffer[x][y]) < intensite(img_in->_buffer[xmax][ymax]))) // (dinf(x_germe, y_germe, x, y) < dinf(x_germe, y_germe, xmax, ymax))
+				{ xmax = x; ymax = y; }
 			tmp_cc = tmp_cc->r;
 		}
+		
+		printf("Found max : (%d, %d)\n\n", xmax, ymax);
 
-		pile droite = bresenham(x_germe, y_germe, x_germe+2, y_germe-1, 0, img_in->_width-1);
+		int y0_bres = (ymax-y_germe)/(xmax-x_germe)*(0 - x_germe) + y_germe;
+		int ymax_bres = (ymax-y_germe)/(xmax-x_germe)*(img_in->_width-1 - x_germe) + y_germe;
+		// printf("Test bresenham x=0 : %d\n", y0_bres);
+		// printf("Test bresenham x=width : %d\n", ymax_bres);
+
+		// pile droite = bresenham(x_germe, y_germe, xmax, ymax, 0, img_in->_width-1);
+		pile droite = bresenham(0, y0_bres, img_in->_width-1, ymax_bres);
+		
 		Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
 		writeImage("q7_droite.ppm", droite_img);
 		
-		int histogramme[255/15] = {0};
+
+		int region_size = 16;
+		int histogramme[255/region_size];
+		for (int i = 0; i < 255/region_size; i++) histogramme[i] = 0;
+
 		while (droite != NULL)
 		{
 			int x = droite->tx, y = droite->ty;
 			if (((0 <= x) && (x < img_in->_width)) && ((0 <= y) && (y < img_in->_height)))
 			{
-				int intens = (int) (255/15 * intensite(img_in->_buffer[x][y]));
+				int intens = (int) (255/region_size * intensite(img_in->_buffer[x][y]));
 				histogramme[intens]++;
 			}
 			
@@ -455,27 +462,31 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 		FILE *histo = fopen("histo.csv", "w+");
 		if (histo == NULL) {
 			perror("Erreur lors de l'ouverture du fichier");
-			return 1;
+			exit(EXIT_FAILURE);
 		}
 
 		fprintf(histo, "Intensite, Nombre de pixels\n");
-		for (int i = 0; i < 255/15; i++) {
+		for (int i = 0; i < 255/region_size; i++) {
 			fprintf(histo, "%d, %d\n", i, histogramme[i]);
 		}
 
 		fclose(histo);
 
-		int ppml = ((it/2)/15); // Initialiser avec la plus grande valeur possible
+		int ppml = ((it/2)/region_size); // Initialiser avec la plus grande valeur possible
 
-		for (int i = MAX(1, ((it/2)/15)); i < 255/15 - 1; i++) {
+		for (int i = 1; i < 255/region_size - 1; i++) {
 			if (histogramme[i] < histogramme[i - 1] && histogramme[i] < histogramme[i + 1]) {
 				ppml = i; // Ici je prends juste le plus grand min local
+				// printf("i_min = %d\n", i);
+				// break;
 			}
 		}
 
-		int intensity_opti = (255/15)*ppml + (255/15)/2;
+		int intensity_opti = (255/region_size)*ppml + (255/region_size)/2;
 		printf("Intensité q7 : %d\n", intensity_opti);
 		it = intensity_opti;
+
+		// it = 6*region_size + region_size/2;
 
 		for (int x=0; x < img_in->_width; x++)
 				for (int y=0; y < img_in->_height; y++)
@@ -661,7 +672,7 @@ void question_7(char *infile, char *outfile, int x, int y, float reject_criterio
 {
 	Image *img = I_read(infile);    
 	
-	printf("Min size : %d\n", min_size);
+	printf("Min size : %d\n\n", min_size);
 
     pile p = I_remplissage8_Layered(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1);
 	printf("Taille région : %d\n", p->size);
