@@ -1,5 +1,7 @@
 #include "questions.h"
 
+int seuil = 255;
+
 pile pile_nouv() { return NULL; }
 
 pile empiler(int x, int y, pile p)
@@ -709,8 +711,9 @@ void question_7(char *infile, char *outfile, int x, int y, float reject_criterio
 
 pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int), int min_size, int max_size, int adapt_threshold, float w, int adapt_w)
 {
-	Color germe_color;
-	int it;
+	Color germe_color = img_in->_buffer[x_germe][y_germe];;
+	int it = (int) (255*intensite(germe_color));
+	//printf("it : %d\n", it);
 
 	pile cc = pile_nouv();
 	pile candidats = pile_nouv();
@@ -729,14 +732,10 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 	cc = empiler(x_germe, y_germe, cc);
 	accepted = empiler(x_germe, y_germe, accepted);
 
-	if (adapt_threshold)
+	if (adapt_threshold && it < seuil)
 	{
-		// TODO QUESTION 7
-		germe_color = img_in->_buffer[x_germe][y_germe];
 		germe_color = C_new(2*germe_color._red, 2*germe_color._green, 2*germe_color._blue);
-		it = (int) (255*intensite(germe_color));
-		// printf("Intensité new germe : 2*%d\n", it/2);
-
+		
 		for (int i = 0; i < 2; i++)
 		{
 			pile_free(candidats);
@@ -779,11 +778,9 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 			}
 		}
 		
-		// Après 2 itérations
+		// Récupérer le pixel le plus sombre (= meilleure direction de la fissure)
 		pile tmp_cc = cc;
 		int xmax = cc->tx, ymax = cc->ty;
-		// printf("Init max : (%d, %d)\n", xmax, ymax);
-
 		while (tmp_cc != NULL)
 		{
 			int x = tmp_cc->tx, y = tmp_cc->ty;
@@ -791,32 +788,23 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 				{ xmax = x; ymax = y; }
 			tmp_cc = tmp_cc->r;
 		}
-		
 		// printf("Found max : (%d, %d)\n\n", xmax, ymax);
 
+
+		// Calcul de la droite de Bresenham étendue
 		int y0_bres;
 		int ymax_bres;
-		if (xmax == x_germe) {
-			// Vertical line case
-			y0_bres = y_germe;  // y-value at x = 0
-			ymax_bres = y_germe; // y-value at x = img_in->_width - 1
-		} else {
-			// General case
+		if (xmax == x_germe) { // Ligne verticale
+			y0_bres = y_germe;  
+			ymax_bres = y_germe; 
+		} else { // Cas général
 			y0_bres = (ymax - y_germe) / (xmax - x_germe) * (0 - x_germe) + y_germe;
 			ymax_bres = (ymax - y_germe) / (xmax - x_germe) * (img_in->_width - 1 - x_germe) + y_germe;
 		}
-
-		// printf("Test bresenham x=0 : %d\n", y0_bres);
-		// printf("Test bresenham x=width : %d\n", ymax_bres);
-
-		// pile droite = bresenham(x_germe, y_germe, xmax, ymax, 0, img_in->_width-1);
 		pile droite = bresenham(0, y0_bres, img_in->_width-1, ymax_bres);
 		
-		// Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
-		// writeImage("droite.ppm", droite_img);
-		// I_free(droite_img);
-		
 
+		// Histogramme à partir de la droite
 		int region_size = 16;
 		int histogramme[255/region_size];
 		for (int i = 0; i < 255/region_size; i++) histogramme[i] = 0;
@@ -836,19 +824,6 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 
 		pile_free(ptr_droite);
 
-		// FILE *histo = fopen("histo.csv", "w+");
-		// if (histo == NULL) {
-		// 	perror("Erreur lors de l'ouverture du fichier");
-		// 	exit(EXIT_FAILURE);
-		// }
-
-		// fprintf(histo, "Intensite, Nombre de pixels\n");
-		// for (int i = 0; i < 255/region_size; i++) {
-		// 	fprintf(histo, "%d, %d\n", i, histogramme[i]);
-		// }
-
-		// fclose(histo);
-
 		int ppml = ((it/2)/region_size); // Initialiser avec la plus grande valeur possible
 
 		for (int i = 1; i < 255/region_size - 1; i++) {
@@ -863,8 +838,7 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 		// printf("Intensité optimale : %d\n", intensity_opti);
 		it = intensity_opti;
 
-		// it = 6*region_size + region_size/2;
-
+		// Reset le tableau de visites
 		tmp_cc = cc;
 		while (tmp_cc != NULL)
 		{
@@ -875,6 +849,7 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 		}
 		visites[x_germe][y_germe] = 2; 
 
+		// Reset les piles
 		pile_free(cc);
 		cc = pile_nouv();
 		cc = empiler(x_germe, y_germe, cc);
@@ -892,7 +867,7 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 
 	modif = 1;
 	// Algorithme principal
-	while (modif && it < 230)
+	while (modif && it < seuil)
 	{
 		modif = 0;
 		it_max_cc = 0;
@@ -972,7 +947,7 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 		if (adapt_w) I_free(current_img);
 	}
 
-	if (min_size != -1 && it < 230) 
+	if (min_size != -1 && it < seuil) 
 	{
 		modif = 1;
 		while (modif)
@@ -1033,7 +1008,7 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 		}
 	}
 
-	if (it >= 230) {
+	if (it >= seuil) {
 		pile_free(cc);
 		cc = pile_nouv();
 	}
@@ -1082,7 +1057,7 @@ void question_9(char *infile, char *outfile, int x, int y, float reject_criterio
 	printf("Min size : %d\n\n", min_size);
 
     pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
-	printf("Taille région : %d\n", p->size);
+	printf("Taille région : %d\n", (p ? p->size : 0));
 
 	Image *out = pileToImage(p, img->_width, img->_height);
 
@@ -1115,6 +1090,8 @@ Image* bufferToImage(int **buffer, int width, int height)
 
 void question_10(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y)
 {
+	seuil = 70;
+
 	int useW = 1;
 
 	Image *img = I_read(infile);
@@ -1124,13 +1101,13 @@ void question_10(char *infile, char *outfile, int x, int y, float reject_criteri
 		visites[x] = (int*)calloc(img->_height,sizeof(int));
 
 	for (int i = 0; i < img->_width/s_x; i++) {
-		printf("Launching %d\n", i*s_x);
 		for (int j = 0; j < img->_height/s_y; j++) {
-			
+			printf("Launching (%d, %d)\n", i*s_x, j*s_y);
 			pile pij = pile_nouv();
 			if (useW) pij = I_remplissage8_Variable(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
 			else pij = I_remplissage8_Layered(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1);
 			
+			// printf("Fusing...\n");
 			while (pij != NULL) {
 				pile t = pij;
 				int px = pij->tx, py = pij->ty;
@@ -1138,6 +1115,7 @@ void question_10(char *infile, char *outfile, int x, int y, float reject_criteri
 				pij = pij->r;
 				free(t);
 			}
+			free(pij);
 		}
 	}
 
@@ -1150,6 +1128,10 @@ void question_10(char *infile, char *outfile, int x, int y, float reject_criteri
 	printf("Taille région : %d\n", size);
 
 	Image *out = bufferToImage(visites, img->_width, img->_height);
+
+	for(int x=0;x<img->_width;x++)
+		free(visites[x]);
+	free(visites);
 
 	float circu = circularite(out);
 	int reject = (circu > reject_criterion);
