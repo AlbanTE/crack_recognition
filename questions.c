@@ -692,3 +692,144 @@ void question_7(char *infile, char *outfile, int x, int y, float reject_criterio
 
 	putchar('\n');
 }
+
+pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int), int min_size, int max_size, int adapt_threshold, float w)
+{
+	Color germe_color;
+	int it;
+
+	pile cc = pile_nouv();
+
+	int modif = 1;
+
+	// 0 : non visité
+	// 1 : candidat
+	// 2 : dans la région
+	int **visites = (int **)calloc(img_in->_width, sizeof(int*));
+	for(int x=0;x<img_in->_width;x++)
+		visites[x] = (int*)calloc(img_in->_height,sizeof(int));
+	
+	visites[x_germe][y_germe] = 2;
+	cc = empiler(x_germe, y_germe, cc);
+
+	it = (int) (255*intensite(img_in->_buffer[x_germe][y_germe]));
+	int it_max_cc;
+
+	modif = 1;
+	// Algorithme principal
+	while (modif)
+	{
+		modif = 0;
+		it_max_cc = 0;
+
+		for (int x=0; x < img_in->_width; x++)
+		{
+			for (int y=0; y < img_in->_height; y++)
+			{
+				if (visites[x][y] == 2)
+				{
+					int x1 = MAX(x-1, 0), 					y1 = y;
+					int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
+					int x3 = x, 							y3 = MAX(y-1, 0);
+					int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+
+					if (!visites[x1][y1]) visites[x1][y1] = 1; // else printf("(%d, %d) déjà vu\n", x1, y1);
+					if (!visites[x2][y2]) visites[x2][y2] = 1; // else printf("(%d, %d) déjà vu\n", x2, y2);
+					if (!visites[x3][y3]) visites[x3][y3] = 1; // else printf("(%d, %d) déjà vu\n", x3, y3);
+					if (!visites[x4][y4]) visites[x4][y4] = 1; // else printf("(%d, %d) déjà vu\n", x4, y4);
+					if (!visites[x1][y3]) visites[x1][y3] = 1; // else printf("(%d, %d) déjà vu\n", x1, y3);
+					if (!visites[x1][y4]) visites[x1][y4] = 1; // else printf("(%d, %d) déjà vu\n", x1, y4);
+					if (!visites[x2][y3]) visites[x2][y3] = 1; // else printf("(%d, %d) déjà vu\n", x2, y3);
+					if (!visites[x2][y4]) visites[x2][y4] = 1; // else printf("(%d, %d) déjà vu\n", x2, y4);
+				}
+			}
+		}
+		for (int x=0; x < img_in->_width; x++)
+			for (int y=0; y < img_in->_height; y++)
+				if (visites[x][y] == 1) 
+					if ((*cmp_color)(img_in->_buffer[x][y], it)) 
+					{ 
+						visites[x][y] = 2; modif = 1; cc = empiler(x, y, cc); 
+						int it_x = (int) 255*intensite(img_in->_buffer[x][y]);
+						it_max_cc = MAX(it_max_cc, it_x);
+					}
+					// else {printf("Considéré mais nan (%d, %d), it = %d\n", x, y, (int) (255*intensite(img_in->_buffer[x][y])));}
+
+		if ((max_size != -1) && (cc->size >= max_size)) break;
+
+		if ((min_size != -1) && (cc->size >= min_size)) modif = 0;
+		else if ((min_size != -1) && (modif == 0))
+		{
+			// Ajouter avec condition modifiee
+			int xi = 0, yi = 0;
+			float imin = 1; // 1 = intensité max car rgb entre 0 et 1 dans la structure Color
+
+			for (int x=0; x < img_in->_width; x++)
+				for (int y=0; y < img_in->_height; y++)
+					if (visites[x][y] == 1) 
+						if (intensite(img_in->_buffer[x][y]) < imin)
+						{
+							xi = x, yi = y;
+							imin = intensite(img_in->_buffer[x][y]);
+						}
+			
+			visites[xi][yi] = 2; modif = 1; cc = empiler(xi, yi, cc);
+			int it_x = (int) 255*intensite(img_in->_buffer[xi][yi]);
+			it_max_cc = MAX(it_max_cc, it_x);
+		}
+
+		it = MAX(it, it_max_cc) + w;
+	}
+
+	if (min_size != -1) 
+	{
+		modif = 1;
+		while (modif)
+		{
+			modif = 0;
+			it_max_cc = 0;
+
+			for (int x=0; x < img_in->_width; x++)
+			{
+				for (int y=0; y < img_in->_height; y++)
+				{
+					if (visites[x][y] == 2)
+					{
+						int x1 = MAX(x-1, 0), 					y1 = y;
+						int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
+						int x3 = x, 							y3 = MAX(y-1, 0);
+						int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+
+						if (!visites[x1][y1]) visites[x1][y1] = 1;
+						if (!visites[x2][y2]) visites[x2][y2] = 1;
+						if (!visites[x3][y3]) visites[x3][y3] = 1;
+						if (!visites[x4][y4]) visites[x4][y4] = 1;
+						if (!visites[x1][y3]) visites[x1][y3] = 1;
+						if (!visites[x1][y4]) visites[x1][y4] = 1;
+						if (!visites[x2][y3]) visites[x2][y3] = 1;
+						if (!visites[x2][y4]) visites[x2][y4] = 1;
+					}
+				}
+			}
+			for (int x=0; x < img_in->_width; x++)
+				for (int y=0; y < img_in->_height; y++)
+					if (visites[x][y] == 1) 
+						if ((*cmp_color)(img_in->_buffer[x][y], it)) 
+						{ 
+							visites[x][y] = 2; modif = 1; cc = empiler(x, y, cc);
+							int it_x = (int) 255*intensite(img_in->_buffer[x][y]);
+							it_max_cc = MAX(it_max_cc, it_x);
+						}
+			
+			it = MAX(it, it_max_cc) + w; // TODO : avoir deux var it, une pour l'iter en cours, une pour la suivante
+		
+			if ((max_size != -1) && (cc->size >= max_size)) break;
+		}
+	}
+
+	for(int x=0;x<img_in->_width;x++)
+		free(visites[x]);
+	free(visites);
+
+	return cc;
+}
