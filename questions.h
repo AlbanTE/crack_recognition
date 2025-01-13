@@ -19,10 +19,6 @@ void pile_free(pile p);
 
 int isInPile(int x, int y, pile p);
 
-pile I_remplissage4(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int));
-
-pile I_remplissage8(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int));
-
 void writeImage(char *outname, Image *out);
 
 void question_1(char *filename, char *outname, int x0, int y0);
@@ -38,3 +34,9 @@ void question_5(char *infile, char *outfile, int x, int y, float reject_criterio
 void question_6(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size);
 
 void question_7(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size);
+
+void question_8(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w);
+
+void question_9(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w);
+
+void question_10(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y);

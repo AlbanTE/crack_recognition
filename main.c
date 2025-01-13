@@ -43,6 +43,15 @@ int main(int argc, char* argv[])
 			case 7:
 				question_7(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion, args->min_size, args->max_size);
 				break;
+			case 8:
+				question_8(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion, args->min_size, args->max_size, args->w);
+				break;
+			case 9:
+				question_9(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion, args->min_size, args->max_size, args->w);
+				break;
+			case 10:
+				question_10(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion, args->min_size, args->max_size, args->w, args->s_x, args->s_y);
+				break;
 			/* [...] */
 			default:
 				fprintf(stderr, "Question %d: no answer.\n", args->question);

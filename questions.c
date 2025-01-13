@@ -262,7 +262,7 @@ float circularite(Image *cc)
 		free(distances[x]);
 	free(distances);
 
-	return (2.f*rayon)/diametre;
+	return (diametre != 0 ? (2.f*rayon)/diametre : 1);
 }
 
 void question_2(int x, int y)
@@ -293,6 +293,8 @@ void question_3(char *infile, char *outfile, int x, int y, float reject_criterio
     pile p = I_remplissage8(img, x, y, color_less_or_equals);
 
 	Image *out = pileToImage(p, img->_width, img->_height);
+
+	pile_free(p);
 
 	float circu = circularite(out);
 	int reject;
@@ -350,7 +352,7 @@ pile bresenham(int xA, int yA, int xB, int yB)
 	}
 
 
-	printf("A : (%d, %d) | B : (%d, %d)\n", xA, yA, xB, yB);
+	// printf("A : (%d, %d) | B : (%d, %d)\n", xA, yA, xB, yB);
 	// pile tmp = p;
 	// while (tmp != NULL) { printf("(%d, %d)\n", tmp->tx, tmp->ty); tmp = tmp->r; }
 
@@ -439,14 +441,16 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 		// pile droite = bresenham(x_germe, y_germe, xmax, ymax, 0, img_in->_width-1);
 		pile droite = bresenham(0, y0_bres, img_in->_width-1, ymax_bres);
 		
-		Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
-		writeImage("q7_droite.ppm", droite_img);
+		// Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
+		// writeImage("q7_droite.ppm", droite_img);
+		// I_free(droite_img);
 		
 
 		int region_size = 16;
 		int histogramme[255/region_size];
 		for (int i = 0; i < 255/region_size; i++) histogramme[i] = 0;
 
+		pile ptr_droite = droite;
 		while (droite != NULL)
 		{
 			int x = droite->tx, y = droite->ty;
@@ -458,6 +462,8 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 			
 			droite = droite->r;
 		}
+
+		pile_free(ptr_droite);
 
 		FILE *histo = fopen("histo.csv", "w+");
 		if (histo == NULL) {
@@ -608,6 +614,8 @@ void question_4(char *infile, char *outfile, int x, int y, float reject_criterio
 
 	Image *out = pileToImage(p, img->_width, img->_height);
 
+	pile_free(p);
+
 	float circu = circularite(out);
 	int reject = (circu > reject_criterion);
 
@@ -631,6 +639,8 @@ void question_5(char *infile, char *outfile, int x, int y, float reject_criterio
 
 	Image *out = pileToImage(p, img->_width, img->_height);
 
+	pile_free(p);
+
 	float circu = circularite(out);
 	int reject = (circu > reject_criterion);
 
@@ -653,6 +663,8 @@ void question_6(char *infile, char *outfile, int x, int y, float reject_criterio
 	printf("Taille région : %d\n", p->size);
 
 	Image *out = pileToImage(p, img->_width, img->_height);
+
+	pile_free(p);
 
 	float circu = circularite(out);
 	int reject = (circu > reject_criterion);
@@ -679,6 +691,8 @@ void question_7(char *infile, char *outfile, int x, int y, float reject_criterio
 
 	Image *out = pileToImage(p, img->_width, img->_height);
 
+	pile_free(p);
+
 	float circu = circularite(out);
 	int reject = (circu > reject_criterion);
 
@@ -693,12 +707,14 @@ void question_7(char *infile, char *outfile, int x, int y, float reject_criterio
 	putchar('\n');
 }
 
-pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int), int min_size, int max_size, int adapt_threshold, float w)
+pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_color)(Color, int), int min_size, int max_size, int adapt_threshold, float w, int adapt_w)
 {
 	Color germe_color;
 	int it;
 
 	pile cc = pile_nouv();
+	pile candidats = pile_nouv();
+	pile accepted = pile_nouv();
 
 	int modif = 1;
 
@@ -711,49 +727,217 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 	
 	visites[x_germe][y_germe] = 2;
 	cc = empiler(x_germe, y_germe, cc);
+	accepted = empiler(x_germe, y_germe, accepted);
 
-	it = (int) (255*intensite(img_in->_buffer[x_germe][y_germe]));
+	if (adapt_threshold)
+	{
+		// TODO QUESTION 7
+		germe_color = img_in->_buffer[x_germe][y_germe];
+		germe_color = C_new(2*germe_color._red, 2*germe_color._green, 2*germe_color._blue);
+		it = (int) (255*intensite(germe_color));
+		// printf("Intensité new germe : 2*%d\n", it/2);
+
+		for (int i = 0; i < 2; i++)
+		{
+			pile_free(candidats);
+			candidats = pile_nouv();
+
+			pile tmp_accepted = accepted;
+			while (tmp_accepted != NULL) {
+				int x = tmp_accepted->tx, y = tmp_accepted->ty;
+
+				int x1 = MAX(x-1, 0), 					y1 = y;
+				int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
+				int x3 = x, 							y3 = MAX(y-1, 0);
+				int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+
+				if (!visites[x1][y1]) { candidats = empiler(x1, y1, candidats); visites[x1][y1] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y1);
+				if (!visites[x2][y2]) { candidats = empiler(x2, y2, candidats); visites[x2][y2] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y2);
+				if (!visites[x3][y3]) { candidats = empiler(x3, y3, candidats); visites[x3][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x3, y3);
+				if (!visites[x4][y4]) { candidats = empiler(x4, y4, candidats); visites[x4][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x4, y4);
+				if (!visites[x1][y3]) { candidats = empiler(x1, y3, candidats); visites[x1][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y3);
+				if (!visites[x1][y4]) { candidats = empiler(x1, y4, candidats); visites[x1][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y4);
+				if (!visites[x2][y3]) { candidats = empiler(x2, y3, candidats); visites[x2][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y3);
+				if (!visites[x2][y4]) { candidats = empiler(x2, y4, candidats); visites[x2][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y4);
+
+				tmp_accepted = tmp_accepted->r;
+			}
+
+			pile_free(accepted);
+			accepted = pile_nouv();
+
+			pile tmp_candidats = candidats;
+			while (tmp_candidats != NULL) {
+				int x = tmp_candidats->tx, y = tmp_candidats->ty;
+
+				if ((*cmp_color)(img_in->_buffer[x][y], it)) 
+				{ 
+					visites[x][y] = 2; cc = empiler(x, y, cc); accepted = empiler(x, y, accepted);
+				}
+
+				tmp_candidats = tmp_candidats->r;
+			}
+		}
+		
+		// Après 2 itérations
+		pile tmp_cc = cc;
+		int xmax = cc->tx, ymax = cc->ty;
+		// printf("Init max : (%d, %d)\n", xmax, ymax);
+
+		while (tmp_cc != NULL)
+		{
+			int x = tmp_cc->tx, y = tmp_cc->ty;
+			if (!(x == x_germe && y == y_germe) && (intensite(img_in->_buffer[x][y]) < intensite(img_in->_buffer[xmax][ymax]))) // (dinf(x_germe, y_germe, x, y) < dinf(x_germe, y_germe, xmax, ymax)))
+				{ xmax = x; ymax = y; }
+			tmp_cc = tmp_cc->r;
+		}
+		
+		// printf("Found max : (%d, %d)\n\n", xmax, ymax);
+
+		int y0_bres;
+		int ymax_bres;
+		if (xmax == x_germe) {
+			// Vertical line case
+			y0_bres = y_germe;  // y-value at x = 0
+			ymax_bres = y_germe; // y-value at x = img_in->_width - 1
+		} else {
+			// General case
+			y0_bres = (ymax - y_germe) / (xmax - x_germe) * (0 - x_germe) + y_germe;
+			ymax_bres = (ymax - y_germe) / (xmax - x_germe) * (img_in->_width - 1 - x_germe) + y_germe;
+		}
+
+		// printf("Test bresenham x=0 : %d\n", y0_bres);
+		// printf("Test bresenham x=width : %d\n", ymax_bres);
+
+		// pile droite = bresenham(x_germe, y_germe, xmax, ymax, 0, img_in->_width-1);
+		pile droite = bresenham(0, y0_bres, img_in->_width-1, ymax_bres);
+		
+		// Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
+		// writeImage("droite.ppm", droite_img);
+		// I_free(droite_img);
+		
+
+		int region_size = 16;
+		int histogramme[255/region_size];
+		for (int i = 0; i < 255/region_size; i++) histogramme[i] = 0;
+
+		pile ptr_droite = droite;
+		while (droite != NULL)
+		{
+			int x = droite->tx, y = droite->ty;
+			if (((0 <= x) && (x < img_in->_width)) && ((0 <= y) && (y < img_in->_height)))
+			{
+				int intens = (int) (255/region_size * intensite(img_in->_buffer[x][y]));
+				histogramme[intens]++;
+			}
+			
+			droite = droite->r;
+		}
+
+		pile_free(ptr_droite);
+
+		// FILE *histo = fopen("histo.csv", "w+");
+		// if (histo == NULL) {
+		// 	perror("Erreur lors de l'ouverture du fichier");
+		// 	exit(EXIT_FAILURE);
+		// }
+
+		// fprintf(histo, "Intensite, Nombre de pixels\n");
+		// for (int i = 0; i < 255/region_size; i++) {
+		// 	fprintf(histo, "%d, %d\n", i, histogramme[i]);
+		// }
+
+		// fclose(histo);
+
+		int ppml = ((it/2)/region_size); // Initialiser avec la plus grande valeur possible
+
+		for (int i = 1; i < 255/region_size - 1; i++) {
+			if (histogramme[i] < histogramme[i - 1] && histogramme[i] < histogramme[i + 1]) {
+				ppml = i; // Ici je prends juste le plus grand min local
+				// printf("i_min = %d\n", i);
+				// break;
+			}
+		}
+
+		int intensity_opti = (255/region_size)*ppml + (255/region_size)/2;
+		// printf("Intensité optimale : %d\n", intensity_opti);
+		it = intensity_opti;
+
+		// it = 6*region_size + region_size/2;
+
+		tmp_cc = cc;
+		while (tmp_cc != NULL)
+		{
+			int x = tmp_cc->tx, y = tmp_cc->ty;
+			if (visites[x][y] != 0) 
+				visites[x][y] = 0;
+			tmp_cc = tmp_cc->r;
+		}
+		visites[x_germe][y_germe] = 2; 
+
+		pile_free(cc);
+		cc = pile_nouv();
+		cc = empiler(x_germe, y_germe, cc);
+
+		pile_free(candidats);
+		candidats = pile_nouv();
+
+		pile_free(accepted);
+		accepted = pile_nouv();
+		accepted = empiler(x_germe, y_germe, accepted);
+	}
+	else it = (int) (255*intensite(img_in->_buffer[x_germe][y_germe]));
+
 	int it_max_cc;
 
 	modif = 1;
 	// Algorithme principal
-	while (modif)
+	while (modif && it < 230)
 	{
 		modif = 0;
 		it_max_cc = 0;
 
-		for (int x=0; x < img_in->_width; x++)
-		{
-			for (int y=0; y < img_in->_height; y++)
-			{
-				if (visites[x][y] == 2)
-				{
-					int x1 = MAX(x-1, 0), 					y1 = y;
-					int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
-					int x3 = x, 							y3 = MAX(y-1, 0);
-					int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+		// printf("Nouvelle intensité : %d\n", it);
+		pile_free(candidats);
+		candidats = pile_nouv();
 
-					if (!visites[x1][y1]) visites[x1][y1] = 1; // else printf("(%d, %d) déjà vu\n", x1, y1);
-					if (!visites[x2][y2]) visites[x2][y2] = 1; // else printf("(%d, %d) déjà vu\n", x2, y2);
-					if (!visites[x3][y3]) visites[x3][y3] = 1; // else printf("(%d, %d) déjà vu\n", x3, y3);
-					if (!visites[x4][y4]) visites[x4][y4] = 1; // else printf("(%d, %d) déjà vu\n", x4, y4);
-					if (!visites[x1][y3]) visites[x1][y3] = 1; // else printf("(%d, %d) déjà vu\n", x1, y3);
-					if (!visites[x1][y4]) visites[x1][y4] = 1; // else printf("(%d, %d) déjà vu\n", x1, y4);
-					if (!visites[x2][y3]) visites[x2][y3] = 1; // else printf("(%d, %d) déjà vu\n", x2, y3);
-					if (!visites[x2][y4]) visites[x2][y4] = 1; // else printf("(%d, %d) déjà vu\n", x2, y4);
-				}
-			}
+		pile tmp_accepted = accepted;
+		while (tmp_accepted != NULL) {
+			int x = tmp_accepted->tx, y = tmp_accepted->ty;
+
+			int x1 = MAX(x-1, 0), 					y1 = y;
+			int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
+			int x3 = x, 							y3 = MAX(y-1, 0);
+			int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+
+			if (!visites[x1][y1]) { candidats = empiler(x1, y1, candidats); visites[x1][y1] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y1);
+			if (!visites[x2][y2]) { candidats = empiler(x2, y2, candidats); visites[x2][y2] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y2);
+			if (!visites[x3][y3]) { candidats = empiler(x3, y3, candidats); visites[x3][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x3, y3);
+			if (!visites[x4][y4]) { candidats = empiler(x4, y4, candidats); visites[x4][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x4, y4);
+			if (!visites[x1][y3]) { candidats = empiler(x1, y3, candidats); visites[x1][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y3);
+			if (!visites[x1][y4]) { candidats = empiler(x1, y4, candidats); visites[x1][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y4);
+			if (!visites[x2][y3]) { candidats = empiler(x2, y3, candidats); visites[x2][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y3);
+			if (!visites[x2][y4]) { candidats = empiler(x2, y4, candidats); visites[x2][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y4);
+
+			tmp_accepted = tmp_accepted->r;
 		}
-		for (int x=0; x < img_in->_width; x++)
-			for (int y=0; y < img_in->_height; y++)
-				if (visites[x][y] == 1) 
-					if ((*cmp_color)(img_in->_buffer[x][y], it)) 
-					{ 
-						visites[x][y] = 2; modif = 1; cc = empiler(x, y, cc); 
-						int it_x = (int) 255*intensite(img_in->_buffer[x][y]);
-						it_max_cc = MAX(it_max_cc, it_x);
-					}
-					// else {printf("Considéré mais nan (%d, %d), it = %d\n", x, y, (int) (255*intensite(img_in->_buffer[x][y])));}
+
+		pile_free(accepted);
+		accepted = pile_nouv();
+
+		pile tmp_candidats = candidats;
+		while (tmp_candidats != NULL) {
+			int x = tmp_candidats->tx, y = tmp_candidats->ty;
+
+			if ((*cmp_color)(img_in->_buffer[x][y], it)) 
+			{ 
+				visites[x][y] = 2; modif = 1; cc = empiler(x, y, cc); accepted = empiler(x, y, accepted);
+				int it_x = (int) 255*intensite(img_in->_buffer[x][y]);
+				it_max_cc = MAX(it_max_cc, it_x);
+			}
+
+			tmp_candidats = tmp_candidats->r;
+		}
 
 		if ((max_size != -1) && (cc->size >= max_size)) break;
 
@@ -764,24 +948,31 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 			int xi = 0, yi = 0;
 			float imin = 1; // 1 = intensité max car rgb entre 0 et 1 dans la structure Color
 
-			for (int x=0; x < img_in->_width; x++)
-				for (int y=0; y < img_in->_height; y++)
-					if (visites[x][y] == 1) 
-						if (intensite(img_in->_buffer[x][y]) < imin)
-						{
-							xi = x, yi = y;
-							imin = intensite(img_in->_buffer[x][y]);
-						}
+			pile tmp_candidats = candidats;
+			while (tmp_candidats != NULL) {
+				int x = tmp_candidats->tx, y = tmp_candidats->ty;
+
+				if (intensite(img_in->_buffer[x][y]) < imin)
+				{
+					xi = x, yi = y;
+					imin = intensite(img_in->_buffer[x][y]);
+				}
+
+				tmp_candidats = tmp_candidats->r;
+			}
 			
-			visites[xi][yi] = 2; modif = 1; cc = empiler(xi, yi, cc);
-			int it_x = (int) 255*intensite(img_in->_buffer[xi][yi]);
-			it_max_cc = MAX(it_max_cc, it_x);
+			visites[xi][yi] = 2; modif = 1; cc = empiler(xi, yi, cc); accepted = empiler(xi, yi, accepted);
+			// int it_x = (int) 255*intensite(img_in->_buffer[xi][yi]);
+			// it_max_cc = MAX(it_max_cc, it_x);
 		}
 
-		it = MAX(it, it_max_cc) + w;
+		Image *current_img = NULL;
+		if (adapt_w) current_img = pileToImage(cc, img_in->_width, img_in->_height);
+		it = MAX(it, it_max_cc) + (adapt_w ? w * circularite(current_img) : w);
+		if (adapt_w) I_free(current_img);
 	}
 
-	if (min_size != -1) 
+	if (min_size != -1 && it < 230) 
 	{
 		modif = 1;
 		while (modif)
@@ -789,47 +980,187 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 			modif = 0;
 			it_max_cc = 0;
 
-			for (int x=0; x < img_in->_width; x++)
-			{
-				for (int y=0; y < img_in->_height; y++)
-				{
-					if (visites[x][y] == 2)
-					{
-						int x1 = MAX(x-1, 0), 					y1 = y;
-						int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
-						int x3 = x, 							y3 = MAX(y-1, 0);
-						int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+			// printf("Nouvelle intensité : %d\n", it);
+			pile_free(candidats);
+			candidats = pile_nouv();
 
-						if (!visites[x1][y1]) visites[x1][y1] = 1;
-						if (!visites[x2][y2]) visites[x2][y2] = 1;
-						if (!visites[x3][y3]) visites[x3][y3] = 1;
-						if (!visites[x4][y4]) visites[x4][y4] = 1;
-						if (!visites[x1][y3]) visites[x1][y3] = 1;
-						if (!visites[x1][y4]) visites[x1][y4] = 1;
-						if (!visites[x2][y3]) visites[x2][y3] = 1;
-						if (!visites[x2][y4]) visites[x2][y4] = 1;
-					}
-				}
+			pile tmp_accepted = accepted;
+			while (tmp_accepted != NULL) {
+				int x = tmp_accepted->tx, y = tmp_accepted->ty;
+
+				int x1 = MAX(x-1, 0), 					y1 = y;
+				int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
+				int x3 = x, 							y3 = MAX(y-1, 0);
+				int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+
+				if (!visites[x1][y1]) { candidats = empiler(x1, y1, candidats); visites[x1][y1] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y1);
+				if (!visites[x2][y2]) { candidats = empiler(x2, y2, candidats); visites[x2][y2] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y2);
+				if (!visites[x3][y3]) { candidats = empiler(x3, y3, candidats); visites[x3][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x3, y3);
+				if (!visites[x4][y4]) { candidats = empiler(x4, y4, candidats); visites[x4][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x4, y4);
+				if (!visites[x1][y3]) { candidats = empiler(x1, y3, candidats); visites[x1][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y3);
+				if (!visites[x1][y4]) { candidats = empiler(x1, y4, candidats); visites[x1][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x1, y4);
+				if (!visites[x2][y3]) { candidats = empiler(x2, y3, candidats); visites[x2][y3] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y3);
+				if (!visites[x2][y4]) { candidats = empiler(x2, y4, candidats); visites[x2][y4] = 1; } // else printf("(%d, %d) déjà vu\n", x2, y4);
+
+				tmp_accepted = tmp_accepted->r;
 			}
-			for (int x=0; x < img_in->_width; x++)
-				for (int y=0; y < img_in->_height; y++)
-					if (visites[x][y] == 1) 
-						if ((*cmp_color)(img_in->_buffer[x][y], it)) 
-						{ 
-							visites[x][y] = 2; modif = 1; cc = empiler(x, y, cc);
-							int it_x = (int) 255*intensite(img_in->_buffer[x][y]);
-							it_max_cc = MAX(it_max_cc, it_x);
-						}
+
+			pile_free(accepted);
+			accepted = pile_nouv();
+
+			pile tmp_candidats = candidats;
+			while (tmp_candidats != NULL) {
+				int x = tmp_candidats->tx, y = tmp_candidats->ty;
+
+				if ((*cmp_color)(img_in->_buffer[x][y], it)) 
+				{ 
+					visites[x][y] = 2; modif = 1; cc = empiler(x, y, cc); accepted = empiler(x, y, accepted);
+					int it_x = (int) 255*intensite(img_in->_buffer[x][y]);
+					it_max_cc = MAX(it_max_cc, it_x);
+				}
+
+				tmp_candidats = tmp_candidats->r;
+			}
 			
-			it = MAX(it, it_max_cc) + w; // TODO : avoir deux var it, une pour l'iter en cours, une pour la suivante
+			Image *current_img = NULL;
+			if (adapt_w) current_img = pileToImage(cc, img_in->_width, img_in->_height);
+			it = MAX(it, it_max_cc) + (adapt_w ? w * circularite(current_img) : w);
+			if (adapt_w) I_free(current_img);
+
+			// printf("New adds : %d\n", accepted->size);
 		
 			if ((max_size != -1) && (cc->size >= max_size)) break;
 		}
 	}
+
+	if (it >= 230) {
+		pile_free(cc);
+		cc = pile_nouv();
+	}
+
+	pile_free(candidats);
+	pile_free(accepted);
 
 	for(int x=0;x<img_in->_width;x++)
 		free(visites[x]);
 	free(visites);
 
 	return cc;
+}
+
+void question_8(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w)
+{
+	Image *img = I_read(infile);    
+	
+	printf("Min size : %d\n\n", min_size);
+
+    pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 0);
+	printf("Taille région : %d\n", p->size);
+
+	Image *out = pileToImage(p, img->_width, img->_height);
+
+	pile_free(p);
+
+	float circu = circularite(out);
+	int reject = (circu > reject_criterion);
+
+	printf("Circularité : %f\n", circu);
+	printf("Forme germée %s.\n", (reject ? "rejetée" : "acceptée"));
+
+	writeImage(outfile, out);
+
+	I_free(img);
+	I_free(out);
+
+	putchar('\n');
+}
+
+void question_9(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w)
+{
+	Image *img = I_read(infile);    
+	
+	printf("Min size : %d\n\n", min_size);
+
+    pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
+	printf("Taille région : %d\n", p->size);
+
+	Image *out = pileToImage(p, img->_width, img->_height);
+
+	pile_free(p);
+
+	float circu = circularite(out);
+	int reject = (circu > reject_criterion);
+
+	printf("Circularité : %f\n", circu);
+	printf("Forme germée %s.\n", (reject ? "rejetée" : "acceptée"));
+
+	writeImage(outfile, out);
+
+	I_free(img);
+	I_free(out);
+
+	putchar('\n');
+}
+
+Image* bufferToImage(int **buffer, int width, int height)
+{
+	Image *img = I_new(width, height);
+
+	for (int i = 0; i < width; i++)
+		for (int j = 0; j < height; j++)
+			if (buffer[i][j] == 1) I_plotColor(img, i, j, C_new(1,1,1));
+
+	return img;	
+}
+
+void question_10(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y)
+{
+	int useW = 1;
+
+	Image *img = I_read(infile);
+
+	int **visites = (int **)calloc(img->_width, sizeof(int*));
+	for(int x=0;x<img->_width;x++)
+		visites[x] = (int*)calloc(img->_height,sizeof(int));
+
+	for (int i = 0; i < img->_width/s_x; i++) {
+		printf("Launching %d\n", i*s_x);
+		for (int j = 0; j < img->_height/s_y; j++) {
+			
+			pile pij = pile_nouv();
+			if (useW) pij = I_remplissage8_Variable(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
+			else pij = I_remplissage8_Layered(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1);
+			
+			while (pij != NULL) {
+				pile t = pij;
+				int px = pij->tx, py = pij->ty;
+				visites[px][py] = 1;
+				pij = pij->r;
+				free(t);
+			}
+		}
+	}
+
+    // pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
+	int size = 0;
+	for (int i = 0; i < img->_width; i++)
+		for (int j = 0; j < img->_height; j++)
+			if (visites[i][j] == 1) size++;
+	
+	printf("Taille région : %d\n", size);
+
+	Image *out = bufferToImage(visites, img->_width, img->_height);
+
+	float circu = circularite(out);
+	int reject = (circu > reject_criterion);
+
+	printf("Circularité : %f\n", circu);
+	printf("Forme germée %s.\n", (reject ? "rejetée" : "acceptée"));
+
+	writeImage(outfile, out);
+
+	I_free(img);
+	I_free(out);
+
+	putchar('\n');
 }
