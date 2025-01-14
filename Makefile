@@ -7,7 +7,7 @@ OUTPUT = project
 SRC = $(wildcard *.c)
 
 # Directories for input/output operations
-IMG_DIR=images# TODO: Indicate the location of the folder containing the images 
+IMG_DIR=images
 PRED_DIR=output
 TEST_DIR=test
 

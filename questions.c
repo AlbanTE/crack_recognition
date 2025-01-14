@@ -1,5 +1,7 @@
 #include "questions.h"
 #include "Image.h"
+#include <stdlib.h>
+#include <stdio.h>
 
 int seuil = 255;
 
@@ -1193,7 +1195,7 @@ void question_11(char *infile, char* outfile)
 		for (int i = 0; i < img->_width; i++) {
 			if (img->_buffer[i][j]._red == 1) {
 				int r = yokoi(buffer, i+1, j+1, 0);
-				if (r == 2)
+				if (r != 1)
 					out->_buffer[i][j] = white;
 			}
 			else printf("0 ");
@@ -1212,6 +1214,123 @@ void question_11(char *infile, char* outfile)
 		printf("\n");
 	}
 
+
+	for(int x=0;x<img->_width+2;x++)
+		free(buffer[x]);
+	free(buffer);
+
+	I_free(img);
+	I_free(out);
+}
+
+noeud creerNoeud(int id, pile p, int pNon8Simple)
+{
+	noeud n = (noeud)malloc(sizeof(struct snoeud));
+	if (n == NULL) {
+		perror("malloc :");
+		exit(EXIT_FAILURE);
+	}
+
+	n->id = id;
+	n->p = p;
+	n->pNon8Simple = pNon8Simple;
+
+	return n;
+}
+
+void freeNoeud(noeud n)
+{
+	if (n == NULL) return;
+	pile_free(n->p);
+	free(n);
+}
+
+void freeListeNoeud(lnode l)
+{
+	while (l != NULL) {
+		lnode t = l;
+		freeNoeud(l->n);
+		l = l->next;
+		free(t);
+	}
+}
+
+lnode addNoeud(lnode l, noeud n)
+{
+	lnode nl = (lnode)malloc(sizeof(struct slnode));
+	if (nl == NULL) {
+		perror("malloc :");
+		exit(EXIT_FAILURE);
+	}
+
+	nl->n = n;
+	nl->next = l;
+
+	return nl;
+}
+
+void question_12(char *infile, char* outfile)
+{
+	Image *img = I_read(infile);
+
+	int **buffer = (int **)calloc(img->_width+2, sizeof(int*));
+	for(int x=0;x<img->_width+2;x++)
+		buffer[x] = (int*)calloc(img->_height+2,sizeof(int));
+	
+	for (int i = 0; i < img->_width; i++) {
+		for (int j = 0; j < img->_height; j++) {
+			int color = img->_buffer[i][j]._red; // 1 si blanc, 0 si noir
+
+			buffer[1+i][1+j] = color;
+		}
+	}
+
+	Image *out = I_new(img->_width, img->_height);
+	Color white = C_new(1, 1, 1);
+
+	lnode liste_noeud = NULL;
+	int node_id = 1;
+
+	for (int j = 0; j < img->_height; j++) {
+		for (int i = 0; i < img->_width; i++) {
+			if (img->_buffer[i][j]._red == 1) {
+				int r = yokoi(buffer, i+1, j+1, 0);
+				if (r != 1) {
+					if (!(buffer[i+1][j] == 1 && buffer[i-1][j] == 1 && buffer[i][j+1] == 1 && buffer[i+1][j-1] == 1)) {
+						out->_buffer[i][j] = white;
+						pile p = pile_nouv();
+						p = empiler(i, j, p);
+
+						noeud n = creerNoeud(node_id, p, 1);
+						liste_noeud = addNoeud(liste_noeud, n);
+						node_id++;
+					}
+				}
+			}
+			else printf("0 ");
+		}
+		printf("\n");
+	}
+
+	printf("\n");
+
+	writeImage(outfile, out);
+
+	for (int j = 0; j < img->_height+2; j++) {
+		for (int i = 0; i < img->_width+2; i++) {
+			printf("%d ", buffer[i][j]);
+		}
+		printf("\n");
+	}
+
+	/* graph mon_graphe {
+		a [style=filled, fillcolor = red]
+		a -- b
+		b -- c
+		a -- c
+	} */
+
+	freeListeNoeud(liste_noeud);
 
 	for(int x=0;x<img->_width+2;x++)
 		free(buffer[x]);

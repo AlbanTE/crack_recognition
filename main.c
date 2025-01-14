@@ -55,6 +55,9 @@ int main(int argc, char* argv[])
 			case 11:
 				question_11(args->input_filename, args->ns_map);
 				break;
+			case 12:
+				question_12(args->input_filename, args->ns_map);
+				break;
 			/* [...] */
 			default:
 				fprintf(stderr, "Question %d: no answer.\n", args->question);
