@@ -52,6 +52,9 @@ int main(int argc, char* argv[])
 			case 10:
 				question_10(args->input_filename, args->output_filename, args->x_0, args->y_0, args->reject_criterion, args->min_size, args->max_size, args->w, args->s_x, args->s_y);
 				break;
+			case 11:
+				question_11(args->input_filename, args->ns_map);
+				break;
 			/* [...] */
 			default:
 				fprintf(stderr, "Question %d: no answer.\n", args->question);

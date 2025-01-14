@@ -1,4 +1,5 @@
 #include "questions.h"
+#include "Image.h"
 
 int seuil = 255;
 
@@ -1145,4 +1146,76 @@ void question_10(char *infile, char *outfile, int x, int y, float reject_criteri
 	I_free(out);
 
 	putchar('\n');
+}
+
+int yokoi(int **image, int x, int y, int quatre_connexe)
+{
+	int x1 = (quatre_connexe ? image[x-1][y+1] : 1 - image[x-1][y+1]);
+    int x2 = (quatre_connexe ? image[x-0][y+1] : 1 - image[x-0][y+1]);
+    int x3 = (quatre_connexe ? image[x+1][y+1] : 1 - image[x+1][y+1]);
+    int x4 = (quatre_connexe ? image[x+1][y+0] : 1 - image[x+1][y+0]);
+    int x5 = (quatre_connexe ? image[x+1][y-1] : 1 - image[x+1][y-1]);
+    int x6 = (quatre_connexe ? image[x-0][y-1] : 1 - image[x-0][y-1]);
+    int x7 = (quatre_connexe ? image[x-1][y-1] : 1 - image[x-1][y-1]);
+    int x8 = (quatre_connexe ? image[x-1][y-0] : 1 - image[x-1][y-0]);
+
+	int r = ( x8*(1-x1*x2) + x2*(1-x3*x4) + x4*(1-x5*x6) + x6*(1-x7*x8) );
+	printf("%d ", r);
+
+	return r;
+}
+
+int isSimple(int **image, int x, int y)
+{
+	return (1 == yokoi(image, x+1, y+1, 0));
+}
+
+void question_11(char *infile, char* outfile)
+{
+	Image *img = I_read(infile);
+
+	int **buffer = (int **)calloc(img->_width+2, sizeof(int*));
+	for(int x=0;x<img->_width+2;x++)
+		buffer[x] = (int*)calloc(img->_height+2,sizeof(int));
+	
+	for (int i = 0; i < img->_width; i++) {
+		for (int j = 0; j < img->_height; j++) {
+			int color = img->_buffer[i][j]._red; // 1 si blanc, 0 si noir
+
+			buffer[1+i][1+j] = color;
+		}
+	}
+
+	Image *out = I_new(img->_width, img->_height);
+	Color white = C_new(1, 1, 1);
+
+	for (int j = 0; j < img->_height; j++) {
+		for (int i = 0; i < img->_width; i++) {
+			if (img->_buffer[i][j]._red == 1) {
+				int r = yokoi(buffer, i+1, j+1, 0);
+				if (r == 2)
+					out->_buffer[i][j] = white;
+			}
+			else printf("0 ");
+		}
+		printf("\n");
+	}
+
+	printf("\n");
+
+	writeImage(outfile, out);
+
+	for (int j = 0; j < img->_height+2; j++) {
+		for (int i = 0; i < img->_width+2; i++) {
+			printf("%d ", buffer[i][j]);
+		}
+		printf("\n");
+	}
+
+
+	for(int x=0;x<img->_width+2;x++)
+		free(buffer[x]);
+	free(buffer);
+
+	I_free(img);
 }
