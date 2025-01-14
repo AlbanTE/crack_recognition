@@ -1218,4 +1218,5 @@ void question_11(char *infile, char* outfile)
 	free(buffer);
 
 	I_free(img);
+	I_free(out);
 }
