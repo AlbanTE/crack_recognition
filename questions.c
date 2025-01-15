@@ -491,7 +491,7 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 		// Après 2 itérations
 		pile tmp_cc = cc;
 		int xmax = cc->tx, ymax = cc->ty;
-		printf("Init max : (%d, %d)\n", xmax, ymax);
+		// printf("Init max : (%d, %d)\n", xmax, ymax);
 
 		while (tmp_cc != NULL)
 		{
@@ -501,7 +501,7 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 			tmp_cc = tmp_cc->r;
 		}
 		
-		printf("Found max : (%d, %d)\n\n", xmax, ymax);
+		// printf("Found max : (%d, %d)\n\n", xmax, ymax);
 
 		int y0_bres = (ymax-y_germe)/(xmax-x_germe)*(0 - x_germe) + y_germe;
 		int ymax_bres = (ymax-y_germe)/(xmax-x_germe)*(img_in->_width-1 - x_germe) + y_germe;
@@ -511,9 +511,9 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 		// pile droite = bresenham(x_germe, y_germe, xmax, ymax, 0, img_in->_width-1);
 		pile droite = bresenham(0, y0_bres, img_in->_width-1, ymax_bres);
 		
-		// Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
-		// writeImage("q7_droite.ppm", droite_img);
-		// I_free(droite_img);
+		Image *droite_img = pileToImage(droite, img_in->_width, img_in->_height);
+		writeImage("q7_droite.ppm", droite_img);
+		I_free(droite_img);
 		
 
 		int region_size = 16;
@@ -559,7 +559,7 @@ pile I_remplissage8_Layered(Image *img_in, int x_germe, int y_germe, int (*cmp_c
 		}
 
 		int intensity_opti = (255/region_size)*ppml + (255/region_size)/2;
-		printf("Intensité q7 : %d\n", intensity_opti);
+		printf("Intensité opti : %d\n", intensity_opti);
 		it = intensity_opti;
 
 		// it = 6*region_size + region_size/2;
@@ -1095,8 +1095,6 @@ void question_8(char *infile, char *outfile, int x, int y, float reject_criterio
 {
 	Image *img = I_read(infile);    
 	
-	printf("Min size : %d\n\n", min_size);
-
     pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 0);
 	printf("Taille région : %d\n", p->size);
 
@@ -1122,8 +1120,6 @@ void question_9(char *infile, char *outfile, int x, int y, float reject_criterio
 {
 	Image *img = I_read(infile);    
 	
-	printf("Min size : %d\n\n", min_size);
-
     pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
 	printf("Taille région : %d\n", (p ? p->size : 0));
 
@@ -1241,7 +1237,6 @@ int yokoi(int **image, int x, int y, int quatre_connexe)
     int x8 = (quatre_connexe ? image[x-1][y-0] : 1 - image[x-1][y-0]);
 
 	int r = ( x8*(1-x1*x2) + x2*(1-x3*x4) + x4*(1-x5*x6) + x6*(1-x7*x8) );
-	printf("%d ", r);
 
 	return r;
 }
@@ -1277,21 +1272,10 @@ void question_11(char *infile, char* outfile)
 				if (r != 1)
 					out->_buffer[i][j] = white;
 			}
-			else printf("0 ");
 		}
-		printf("\n");
 	}
-
-	printf("\n");
 
 	writeImage(outfile, out);
-
-	for (int j = 0; j < img->_height+2; j++) {
-		for (int i = 0; i < img->_width+2; i++) {
-			printf("%d ", buffer[i][j]);
-		}
-		printf("\n");
-	}
 
 
 	for(int x=0;x<img->_width+2;x++)
@@ -1300,6 +1284,8 @@ void question_11(char *infile, char* outfile)
 
 	I_free(img);
 	I_free(out);
+
+	putchar('\n');
 }
 
 noeud creerNoeud(int id, pile p, int pNon8Simple)
@@ -1544,12 +1530,8 @@ void question_12(char *infile, char* ns_map, char *graph_name)
 					}
 				}
 			}
-			else printf("0 ");
 		}
-		printf("\n");
 	}
-
-	printf("\n");
 
 	writeImage(ns_map, out);
 
@@ -1570,4 +1552,6 @@ void question_12(char *infile, char* ns_map, char *graph_name)
 
 	I_free(img);
 	I_free(out);
+
+	putchar('\n');
 }

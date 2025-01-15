@@ -15,16 +15,16 @@ TEST_DIR=test
 PARAM1  = --input_filename $(IMG_DIR)/11215-8.pgm --output_filename $(PRED_DIR)/11215-8.pgm --x_0 50 --y_0 75
 PARAM3  = $(PARAM1) --reject_criterion 0.5
 PARAM4  = $(PARAM3)
-PARAM5  = $(PARAM4) --min_size 3
-PARAM6  = $(PARAM5) --max_size 40
+PARAM5  = $(PARAM4) --min_size 30 --max_size 10000
+PARAM6  = $(PARAM5) 
 PARAM7  = $(PARAM6)
 PARAM8  = $(PARAM7) --w 1.0
 PARAM9  = $(PARAM8)
 PARAM10 = $(PARAM9) --s_x 10 --s_y 10
-PARAM11 = $(PARAM9) --ns_map $(PRED_DIR)/ns_map.png
-PARAM12 = $(PARAM11) --graph $(PRED_DIR)/graph.dot
+PARAM11 = --input_filename yokoi.ppm --output_filename a --ns_map $(PRED_DIR)/ns_map.ppm --graph $(PRED_DIR)/graph.dot
+PARAM12 = $(PARAM11)
 PARAM13 = $(PARAM12)
-PARAM14 = # TODO: Specify the parameters 
+PARAM14 = $(PARAM1) # TODO: Specify the parameters 
 
 $(OUTPUT): $(SRC)
 	gcc -o $(OUTPUT) $(SRC) $(CFLAGS) $(LDFLAGS)
@@ -60,7 +60,7 @@ check: $(OUTPUT)
 	valgrind ./project --question 11 $(PARAM11) 2> $(TEST_DIR)/question11.val_chk
 	valgrind ./project --question 12 $(PARAM12) 2> $(TEST_DIR)/question12.val_chk
 	valgrind ./project --question 13 $(PARAM13) 2> $(TEST_DIR)/question13.val_chk
-	valgrind ./project --question 14 $(PARAM13) 2> $(TEST_DIR)/question14.val_chk
+	valgrind ./project --question 14 $(PARAM14) 2> $(TEST_DIR)/question14.val_chk
 	
 clean:
 	rm -f $(OUTPUT) *.o $(TEST_DIR)/*.val_chk
