@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
 				question_11(args->input_filename, args->ns_map);
 				break;
 			case 12:
-				question_12(args->input_filename, args->ns_map);
+				question_12(args->input_filename, args->ns_map, args->graph);
 				break;
 			/* [...] */
 			default:

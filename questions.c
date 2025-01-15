@@ -1269,7 +1269,162 @@ lnode addNoeud(lnode l, noeud n)
 	return nl;
 }
 
-void question_12(char *infile, char* outfile)
+lnode constructTree(Image *img_in, lnode l)
+{
+	int **visites = (int **)calloc(img_in->_width, sizeof(int*));
+	for(int x=0;x<img_in->_width;x++)
+		visites[x] = (int*)calloc(img_in->_height,sizeof(int));
+
+	int nb_cc = 0;
+	for (int i = 0; i < img_in->_width; i++) {
+		for (int j = 0; j < img_in->_height; j++) {
+			if (visites[i][j] == 0 && img_in->_buffer[i][j]._red == 1) { // Pixel de la forme pas encore visité
+				pile p = pile_nouv();
+				pile cc = pile_nouv();
+
+				p = empiler(i, j, p);
+
+				while (p != NULL)
+				{
+					int x = p->tx, y = p->ty;
+					p = depiler(p);
+					cc = empiler(x, y, cc);
+
+					int x1 = MAX(x-1, 0), 					y1 = y;
+					int x2 = MIN(x+1, img_in->_width-1),	y2 = y;
+					int x3 = x, 							y3 = MAX(y-1, 0);
+					int x4 = x, 							y4 = MIN(y+1, img_in->_height-1);
+
+					if (img_in->_buffer[x4][y4]._red == 1) if (!visites[x4][y4]) { p = empiler(x4, y4, p); visites[x4][y4] = 1; }
+					if (img_in->_buffer[x1][y1]._red == 1) if (!visites[x1][y1]) { p = empiler(x1, y1, p); visites[x1][y1] = 1; }
+					if (img_in->_buffer[x2][y2]._red == 1) if (!visites[x2][y2]) { p = empiler(x2, y2, p); visites[x2][y2] = 1; }
+					if (img_in->_buffer[x3][y3]._red == 1) if (!visites[x3][y3]) { p = empiler(x3, y3, p); visites[x3][y3] = 1; }
+
+					if (img_in->_buffer[x1][y3]._red == 1) if (!visites[x1][y3]) { p = empiler(x1, y3, p); visites[x1][y3] = 1; }
+					if (img_in->_buffer[x1][y4]._red == 1) if (!visites[x1][y4]) { p = empiler(x1, y4, p); visites[x1][y4] = 1; }
+					if (img_in->_buffer[x2][y3]._red == 1) if (!visites[x2][y3]) { p = empiler(x2, y3, p); visites[x2][y3] = 1; }
+					if (img_in->_buffer[x2][y4]._red == 1) if (!visites[x2][y4]) { p = empiler(x2, y4, p); visites[x2][y4] = 1; }
+				}
+
+				noeud n = creerNoeud((l == NULL ? 1 : (l->n != NULL ? l->n->id + 1: -1)), cc, 0);
+				l = addNoeud(l, n);
+
+				nb_cc++;
+			}
+		}
+	}
+
+	printf("Nombre de cc trouvées : %d\n", nb_cc);
+
+	
+	for(int x=0;x<img_in->_width;x++)
+		free(visites[x]);
+	free(visites);
+
+	return l;
+}
+
+graph addGraph(graph g, int id1, int id2)
+{
+	graph ng = (graph)malloc(sizeof(struct sgraph));
+	if (ng == NULL) {
+		perror("malloc :");
+		exit(EXIT_FAILURE);
+	}
+
+	ng->node1 = id1;
+	ng->node2 = id2;
+	ng->next = g;
+
+	return ng;
+}
+
+int neighbors(noeud n1, noeud n2)
+{
+	pile p1 = n1->p, p2 = n2->p;
+
+	while (p1 != NULL) {
+		int x = p1->tx, y = p1->ty;
+
+		pile tmp2 = p2;
+		while (tmp2 != NULL) {
+			if (dinf(x, y, tmp2->tx, tmp2->ty) <= 1)
+				return 1;
+
+			tmp2 = tmp2->r;
+		}
+
+		p1 = p1->r;
+	}
+
+	return 0;
+}
+
+graph addNodeLinks(graph g, noeud n1, lnode l)
+{
+	if (l == NULL) return g;
+
+	while (l != NULL) {
+		noeud n2 = l->n;
+		if (neighbors(n1, n2))
+			g = addGraph(g, n1->id, n2->id);
+		l = l->next;
+	}
+
+	return g;
+}
+
+graph constructGraph(lnode l)
+{
+	graph g = NULL;
+
+	while (l != NULL) {
+		noeud n = l->n;
+		g = addNodeLinks(g, n, l->next);
+		l = l->next;
+	}
+
+	return g;
+}
+
+void freeGraph(graph g)
+{
+	while (g != NULL) {
+		graph t = g;
+		g = g->next;
+		free(t);
+	}
+}
+
+void writeGraph(char *outname, graph g, lnode l)
+{
+	FILE *output = fopen(outname, "w+");
+    if (output == NULL) { fprintf(stderr, "Error creating %s file...\n", outname); exit(1); }
+
+	/* graph mon_graphe {
+		a [style=filled, fillcolor = red]
+		a -- b
+		b -- c
+		a -- c
+	} */
+
+	fprintf(output, "graph my_graph {\n");
+
+	while (l != NULL) {
+		fprintf(output, "\t%d [style=filled, fillcolor = %s, shape=\"circle\"]\n", l->n->id, (l->n->pNon8Simple ? "red" : "blue"));
+		l = l->next;
+	}
+
+	while (g != NULL) {
+		fprintf(output, "\t%d -- %d\n", g->node1, g->node2);
+		g = g->next;
+	}
+
+	fprintf(output, "}\n");
+    fclose(output);
+}
+
+void question_12(char *infile, char* ns_map, char *graph_name)
 {
 	Image *img = I_read(infile);
 
@@ -1287,6 +1442,7 @@ void question_12(char *infile, char* outfile)
 
 	Image *out = I_new(img->_width, img->_height);
 	Color white = C_new(1, 1, 1);
+	Color black = C_new(0, 0, 0);
 
 	lnode liste_noeud = NULL;
 	int node_id = 1;
@@ -1297,6 +1453,8 @@ void question_12(char *infile, char* outfile)
 				int r = yokoi(buffer, i+1, j+1, 0);
 				if (r != 1) {
 					if (!(buffer[i+1][j] == 1 && buffer[i-1][j] == 1 && buffer[i][j+1] == 1 && buffer[i+1][j-1] == 1)) {
+						I_plotColor(img, i, j, black);
+
 						out->_buffer[i][j] = white;
 						pile p = pile_nouv();
 						p = empiler(i, j, p);
@@ -1314,23 +1472,18 @@ void question_12(char *infile, char* outfile)
 
 	printf("\n");
 
-	writeImage(outfile, out);
+	writeImage(ns_map, out);
 
-	for (int j = 0; j < img->_height+2; j++) {
-		for (int i = 0; i < img->_width+2; i++) {
-			printf("%d ", buffer[i][j]);
-		}
-		printf("\n");
-	}
+	writeImage("img_algo_12.pgm", img);
 
-	/* graph mon_graphe {
-		a [style=filled, fillcolor = red]
-		a -- b
-		b -- c
-		a -- c
-	} */
+
+	liste_noeud = constructTree(img, liste_noeud);
+	graph g = constructGraph(liste_noeud);
+
+	writeGraph(graph_name, g, liste_noeud);
 
 	freeListeNoeud(liste_noeud);
+	freeGraph(g);
 
 	for(int x=0;x<img->_width+2;x++)
 		free(buffer[x]);

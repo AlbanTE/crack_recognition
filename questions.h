@@ -21,8 +21,8 @@ typedef struct slnode {
 } *lnode;
 
 typedef struct sgraph {
-	noeud node1;
-	noeud node2;
+	int node1;
+	int node2;
 	struct sgraph *next;
 } *graph;
 
@@ -60,4 +60,4 @@ void question_10(char *infile, char *outfile, int x, int y, float reject_criteri
 
 void question_11(char *infile, char *outfile);
 
-void question_12(char *infile, char *outfile);
+void question_12(char *infile, char *ns_map, char *graph_name);
