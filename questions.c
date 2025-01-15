@@ -270,6 +270,71 @@ float circularite(Image *cc)
 	return (diametre != 0 ? (2.f*rayon)/diametre : 1);
 }
 
+float circularite_pile(pile cc, int width, int height)
+{
+    int **distances = (int **)calloc(width, sizeof(int*));
+    for(int x = 0; x < width; x++)
+        distances[x] = (int*)calloc(height, sizeof(int));
+
+    int dmax = 1 + MIN(width, height);
+
+    pile tmp = cc;
+    while (tmp != NULL)
+    {
+        int x = tmp->tx;
+        int y = tmp->ty;
+        distances[x][y] = (distances[x][y] == 0 ? dmax : distances[x][y]);
+        tmp = tmp->r;
+    }
+
+    int dcentres = 0;
+
+    tmp = cc;
+    while (tmp != NULL)
+    {
+        int x = tmp->tx;
+        int y = tmp->ty;
+        if (distances[x][y] == dmax)
+        {
+            int dmin = dmax;
+            for (int x1 = MAX(x-1, 0); x1 <= MIN(x+1, width-1); x1++) 
+                for (int y1 = MAX(y-1, 0); y1 <= MIN(y+1, height-1); y1++)
+                    if (distances[x1][y1] < dmin) dmin = distances[x1][y1];
+            
+            distances[x][y] = (dmin == dmax ? 1 : dmin + 1);
+            if (distances[x][y] > dcentres) dcentres = distances[x][y];
+        }
+        tmp = tmp->r;
+    }
+
+    int rayon = MAX(0, dcentres-1);
+
+    int xmin = width, ymin = height, xmax = 0, ymax = 0;
+
+    tmp = cc;
+    while (tmp != NULL)
+    {
+        int x = tmp->tx;
+        int y = tmp->ty;
+        if (distances[x][y] == 1)
+        {
+            if (x < xmin) xmin = x;
+            if (x > xmax) xmax = x;
+            if (y < ymin) ymin = y;
+            if (y > ymax) ymax = y;
+        }
+        tmp = tmp->r;
+    }
+
+    int diametre = MAX(xmax - xmin, ymax - ymin);
+
+    for(int x = 0; x < width; x++)
+        free(distances[x]);
+    free(distances);
+
+    return (diametre != 0 ? (2.f * rayon) / diametre : 1);
+}
+
 void question_2(int x, int y)
 {
 	Image *img = I_read("TP2_img1.pbm");    
@@ -944,10 +1009,10 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 			// it_max_cc = MAX(it_max_cc, it_x);
 		}
 
-		Image *current_img = NULL;
-		if (adapt_w) current_img = pileToImage(cc, img_in->_width, img_in->_height);
-		it = MAX(it, it_max_cc) + (adapt_w ? w * circularite(current_img) : w);
-		if (adapt_w) I_free(current_img);
+		// Image *current_img = NULL;
+		// if (adapt_w) current_img = pileToImage(cc, img_in->_width, img_in->_height);
+		it = MAX(it, it_max_cc) + (adapt_w ? w * circularite_pile(cc, img_in->_width, img_in->_height) : w);
+		// if (adapt_w) I_free(current_img);
 	}
 
 	if (min_size != -1 && it < seuil) 
@@ -1000,10 +1065,10 @@ pile I_remplissage8_Variable(Image *img_in, int x_germe, int y_germe, int (*cmp_
 				tmp_candidats = tmp_candidats->r;
 			}
 			
-			Image *current_img = NULL;
-			if (adapt_w) current_img = pileToImage(cc, img_in->_width, img_in->_height);
-			it = MAX(it, it_max_cc) + (adapt_w ? w * circularite(current_img) : w);
-			if (adapt_w) I_free(current_img);
+			// Image *current_img = NULL;
+			// if (adapt_w) current_img = pileToImage(cc, img_in->_width, img_in->_height);
+			it = MAX(it, it_max_cc) + (adapt_w ? w * circularite_pile(cc, img_in->_width, img_in->_height) : w);
+			// if (adapt_w) I_free(current_img);
 
 			// printf("New adds : %d\n", accepted->size);
 		
@@ -1091,13 +1156,25 @@ Image* bufferToImage(int **buffer, int width, int height)
 	return img;	
 }
 
-void question_10(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y)
+int mean_intensity_threshold(Image *img)
 {
-	seuil = 70;
+    int total_intensity = 0;
+    int total_pixels = img->_width * img->_height;
 
-	int useW = 1;
+    for (int x = 0; x < img->_width; x++) {
+        for (int y = 0; y < img->_height; y++) {
+            total_intensity += (int)(255 * intensite(img->_buffer[x][y]));
+        }
+    }
 
+    return total_intensity / total_pixels;
+}
+
+void question_10(char *infile, char *outfile, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y)
+{
 	Image *img = I_read(infile);
+	
+	seuil = 0.75 * mean_intensity_threshold(img);
 
 	int **visites = (int **)calloc(img->_width, sizeof(int*));
 	for(int x=0;x<img->_width;x++)
@@ -1105,24 +1182,26 @@ void question_10(char *infile, char *outfile, int x, int y, float reject_criteri
 
 	for (int i = 0; i < img->_width/s_x; i++) {
 		for (int j = 0; j < img->_height/s_y; j++) {
-			printf("Launching (%d, %d)\n", i*s_x, j*s_y);
-			pile pij = pile_nouv();
-			if (useW) pij = I_remplissage8_Variable(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
-			else pij = I_remplissage8_Layered(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1);
-			
-			// printf("Fusing...\n");
-			while (pij != NULL) {
-				pile t = pij;
-				int px = pij->tx, py = pij->ty;
-				visites[px][py] = 1;
-				pij = pij->r;
-				free(t);
+			if (visites[i][j] != 1) {
+				// printf("Launching (%d, %d)\n", i*s_x, j*s_y);
+				pile pij = pile_nouv();
+				pij = I_remplissage8_Variable(img, i*s_x, j*s_y, color_less_or_equals, (min_size != 2 ? min_size/2 : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
+				
+				if ((circularite_pile(pij, img->_width, img->_height) <= reject_criterion) && ((pij ? pij->size : 0) >= min_size)) {
+					while (pij != NULL) {
+						pile t = pij;
+						int px = pij->tx, py = pij->ty;
+						visites[px][py] = 1;
+						pij = pij->r;
+						free(t);
+					}
+					free(pij);
+				}
+				else pile_free(pij);
 			}
-			free(pij);
 		}
 	}
 
-    // pile p = I_remplissage8_Variable(img, x, y, color_less_or_equals, (min_size != 2 ? min_size : -1), (max_size != 5 ? max_size : -1), 1, w, 1);
 	int size = 0;
 	for (int i = 0; i < img->_width; i++)
 		for (int j = 0; j < img->_height; j++)

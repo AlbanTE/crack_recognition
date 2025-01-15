@@ -56,7 +56,7 @@ void question_8(char *infile, char *outfile, int x, int y, float reject_criterio
 
 void question_9(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w);
 
-void question_10(char *infile, char *outfile, int x, int y, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y);
+void question_10(char *infile, char *outfile, float reject_criterion, int min_size, int max_size, float w, int s_x, int s_y);
 
 void question_11(char *infile, char *outfile);
 
