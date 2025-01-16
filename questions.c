@@ -194,6 +194,8 @@ void question_1(char *filename, char *outname, int x0, int y0)
 	Image *out = pileToImage(p, img->_width, img->_height);
 	writeImage(outname, out);
 
+	pile_free(p);
+
 	I_free(img);
 	I_free(out);
 
